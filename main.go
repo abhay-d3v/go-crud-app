@@ -5,6 +5,7 @@ import (
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
+	"strconv"
 )
 
 var database *sql.DB
@@ -29,14 +30,20 @@ func init() {
 	}
 }
 
-func AddGame() {
-	fmt.Print("Enter Name & Genre >> ")
+func CheckIDExists(id int) bool {
+	var exists bool
+	_ = database.QueryRow("SELECT EXISTS(SELECT 1 FROM games WHERE id = ?)", id).Scan(&exists)
+	return exists
+}
 
+func AddGame() {
 	var name, genre string
+
+	fmt.Print("Enter Name & Genre >> ")
 
 	_, err := fmt.Scan(&name, &genre)
 	if err != nil {
-		fmt.Println("Error:", err)
+		fmt.Println("[Error]:", err)
 		return
 	}
 
@@ -47,6 +54,97 @@ func AddGame() {
 
 	_, err = statement.Exec(name, genre)
 	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := statement.Close(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func ViewAll() {
+	rows, err := database.Query("SELECT id, name, genre FROM games")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var id int
+	var name string
+	var genre string
+
+	for rows.Next() {
+		err := rows.Scan(&id, &name, &genre)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println(strconv.Itoa(id) + ": " + name + " " + genre)
+	}
+
+	if err := rows.Close(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func Update() {
+	var id int
+	var name, genre string
+
+	fmt.Print("Enter ID, Name & Genre >> ")
+
+	_, err := fmt.Scan(&id, &name, &genre)
+	if err != nil {
+		fmt.Println("[Error]:", err)
+		return
+	}
+
+	if !CheckIDExists(id) {
+		fmt.Println("[Error]: ID does not exist!")
+		return
+	}
+
+	statement, err := database.Prepare("UPDATE games SET name = ?, genre = ? WHERE id = ?;")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = statement.Exec(name, genre, id)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := statement.Close(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func Delete() {
+	var id int
+
+	fmt.Print("Enter ID >> ")
+
+	_, err := fmt.Scan(&id)
+	if err != nil {
+		fmt.Println("[Error]:", err)
+		return
+	}
+
+	if !CheckIDExists(id) {
+		fmt.Println("[Error]: ID does not exist!")
+		return
+	}
+
+	statement, err := database.Prepare("DELETE FROM games WHERE id = ?;")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = statement.Exec(id)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := statement.Close(); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -73,15 +171,17 @@ func main() {
 
 		switch menuCode {
 		case 1:
-			fmt.Println("Adding a game...")
 			AddGame()
 			fmt.Println("")
 		case 2:
-			fmt.Println("2")
+			ViewAll()
+			fmt.Println("")
 		case 3:
-			fmt.Println("3")
+			Update()
+			fmt.Println("")
 		case 4:
-			fmt.Println("4")
+			Delete()
+			fmt.Println("")
 		case 5:
 			fmt.Println("Exiting...")
 			goto exit
