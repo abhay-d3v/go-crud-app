@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
@@ -36,36 +37,28 @@ func CheckIDExists(id int) bool {
 	return exists
 }
 
-func AddGame() {
-	var name, genre string
-
-	fmt.Print("Enter Name & Genre >> ")
-
-	_, err := fmt.Scan(&name, &genre)
-	if err != nil {
-		fmt.Println("[Error]:", err)
-		return
-	}
-
+func AddGame(name, genre string) error {
 	statement, err := database.Prepare("INSERT INTO games (name, genre) VALUES (?, ?)")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	_, err = statement.Exec(name, genre)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	if err := statement.Close(); err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return err
 }
 
-func ViewAll() {
+func ViewAll() error {
 	rows, err := database.Query("SELECT id, name, genre FROM games")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	var id int
@@ -75,78 +68,59 @@ func ViewAll() {
 	for rows.Next() {
 		err := rows.Scan(&id, &name, &genre)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		fmt.Println(strconv.Itoa(id) + ": " + name + " " + genre)
 	}
 
 	if err := rows.Close(); err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return err
 }
 
-func Update() {
-	var id int
-	var name, genre string
-
-	fmt.Print("Enter ID, Name & Genre >> ")
-
-	_, err := fmt.Scan(&id, &name, &genre)
-	if err != nil {
-		fmt.Println("[Error]:", err)
-		return
-	}
-
+func Update(id int, name, genre string) error {
 	if !CheckIDExists(id) {
-		fmt.Println("[Error]: ID does not exist!")
-		return
+		return errors.New("ID does not exist")
 	}
 
 	statement, err := database.Prepare("UPDATE games SET name = ?, genre = ? WHERE id = ?;")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	_, err = statement.Exec(name, genre, id)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	if err := statement.Close(); err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return err
 }
 
-func Delete() {
-	var id int
-
-	fmt.Print("Enter ID >> ")
-
-	_, err := fmt.Scan(&id)
-	if err != nil {
-		fmt.Println("[Error]:", err)
-		return
-	}
-
+func Delete(id int) error {
 	if !CheckIDExists(id) {
-		fmt.Println("[Error]: ID does not exist!")
-		return
+		return errors.New("ID does not exist")
 	}
 
 	statement, err := database.Prepare("DELETE FROM games WHERE id = ?;")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	_, err = statement.Exec(id)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	if err := statement.Close(); err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return err
 }
 
 func main() {
@@ -170,18 +144,75 @@ func main() {
 		}
 
 		switch menuCode {
+		// Add game ------------>
 		case 1:
-			AddGame()
-			fmt.Println("")
+			var name, genre string
+
+			fmt.Print("Enter Name & Genre >> ")
+
+			_, err := fmt.Scan(&name, &genre)
+			if err != nil {
+				fmt.Println("[Error]:", err)
+				break
+			}
+
+			err = AddGame(name, genre)
+			if err != nil {
+				fmt.Println("[Error]:", err)
+				break
+			}
+			fmt.Println("Game added!")
+
+		// View All Games ------------>
 		case 2:
-			ViewAll()
+			err = ViewAll()
+			if err != nil {
+				fmt.Println("[Error]:", err)
+				break
+			}
 			fmt.Println("")
+
+		// Update Game ------------>
 		case 3:
-			Update()
-			fmt.Println("")
+			var id int
+			var name, genre string
+
+			fmt.Print("Enter ID, Name & Genre >> ")
+
+			_, err := fmt.Scan(&id, &name, &genre)
+			if err != nil {
+				fmt.Println("[Error]:", err)
+				break
+			}
+
+			err = Update(id, name, genre)
+			if err != nil {
+				fmt.Println("[Error]:", err)
+				break
+			}
+			fmt.Println("Game Updated!")
+
+		// Delete Game ------------>
 		case 4:
-			Delete()
-			fmt.Println("")
+			var id int
+
+			fmt.Print("Enter ID >> ")
+
+			_, err := fmt.Scan(&id)
+			if err != nil {
+				fmt.Println("[Error]:", err)
+				break
+			}
+
+			err = Delete(id)
+			if err != nil {
+				fmt.Println("[Error]:", err)
+				break
+			}
+			
+			fmt.Println("Game Deleted!")
+
+		// Exit ------------>
 		case 5:
 			fmt.Println("Exiting...")
 			goto exit
